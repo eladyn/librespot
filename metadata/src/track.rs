@@ -66,7 +66,7 @@ impl InnerAudioItem for Track {
             if track.alternatives.is_empty() {
                 None
             } else {
-                Some(track.alternatives.clone())
+                Some(track.alternatives)
             }
         };
 

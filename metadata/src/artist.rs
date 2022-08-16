@@ -24,6 +24,7 @@ pub use protocol::metadata::ArtistWithRole_ArtistRole as ArtistRole;
 
 use protocol::metadata::ActivityPeriod as ActivityPeriodMessage;
 use protocol::metadata::AlbumGroup as AlbumGroupMessage;
+use protocol::metadata::Artist as ArtistMessage;
 use protocol::metadata::ArtistWithRole as ArtistWithRoleMessage;
 use protocol::metadata::Biography as BiographyMessage;
 use protocol::metadata::TopTracks as TopTracksMessage;
@@ -44,7 +45,7 @@ pub struct Artist {
     pub biographies: Biographies,
     pub activity_periods: ActivityPeriods,
     pub restrictions: Restrictions,
-    pub related: Artists,
+    pub related: RelatedArtists,
     pub is_portrait_album_cover: bool,
     pub portrait_group: Images,
     pub sales_periods: SalePeriods,
@@ -67,6 +68,18 @@ pub struct ArtistWithRole {
 pub struct ArtistsWithRole(pub Vec<ArtistWithRole>);
 
 impl_deref_wrapped!(ArtistsWithRole, Vec<ArtistWithRole>);
+
+#[derive(Debug, Clone)]
+pub struct RelatedArtist {
+    pub id: SpotifyId,
+    pub name: String,
+    pub portraits: Images,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RelatedArtists(pub Vec<RelatedArtist>);
+
+impl_deref_wrapped!(RelatedArtists, Vec<RelatedArtist>);
 
 #[derive(Debug, Clone)]
 pub struct TopTracks {
@@ -221,6 +234,19 @@ impl TryFrom<&ArtistWithRoleMessage> for ArtistWithRole {
 }
 
 impl_try_from_repeated!(ArtistWithRoleMessage, ArtistsWithRole);
+
+impl TryFrom<&ArtistMessage> for RelatedArtist {
+    type Error = librespot_core::Error;
+    fn try_from(artist: &ArtistMessage) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: artist.try_into()?,
+            name: artist.get_name().to_owned(),
+            portraits: artist.get_portrait_group().get_image().into(),
+        })
+    }
+}
+
+impl_try_from_repeated!(ArtistMessage, RelatedArtists);
 
 impl TryFrom<&TopTracksMessage> for TopTracks {
     type Error = librespot_core::Error;
