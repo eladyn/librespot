@@ -27,7 +27,7 @@ use protocol::playlist4_external::UpdateListAttributes as PlaylistUpdateAttribut
 pub struct PlaylistAttributes {
     pub name: String,
     pub description: String,
-    pub picture: Vec<u8>,
+    pub picture: Picture,
     pub is_collaborative: bool,
     pub pl3_version: String,
     pub is_deleted_by_owner: bool,
@@ -49,6 +49,16 @@ pub struct PlaylistFormatAttribute(pub HashMap<String, String>);
 
 impl_deref_wrapped!(PlaylistFormatAttribute, HashMap<String, String>);
 
+#[derive(Debug, Clone, Default)]
+pub struct Picture(Vec<u8>);
+
+impl_deref_wrapped!(Picture, Vec<u8>);
+
+#[derive(Debug, Clone, Default)]
+pub struct ItemId(Vec<u8>);
+
+impl_deref_wrapped!(ItemId, Vec<u8>);
+
 #[derive(Debug, Clone)]
 pub struct PlaylistItemAttributes {
     pub added_by: String,
@@ -56,7 +66,7 @@ pub struct PlaylistItemAttributes {
     pub seen_at: Date,
     pub is_public: bool,
     pub format_attributes: PlaylistFormatAttribute,
-    pub item_id: Vec<u8>,
+    pub item_id: ItemId,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -101,7 +111,7 @@ impl TryFrom<&PlaylistAttributesMessage> for PlaylistAttributes {
         Ok(Self {
             name: attributes.get_name().to_owned(),
             description: attributes.get_description().to_owned(),
-            picture: attributes.get_picture().to_owned(),
+            picture: attributes.get_picture().into(),
             is_collaborative: attributes.get_collaborative(),
             pl3_version: attributes.get_pl3_version().to_owned(),
             is_deleted_by_owner: attributes.get_deleted_by_owner(),
@@ -129,6 +139,18 @@ impl From<&[PlaylistFormatAttributeMessage]> for PlaylistFormatAttribute {
     }
 }
 
+impl From<&[u8]> for ItemId {
+    fn from(item_id: &[u8]) -> Self {
+        Self(item_id.to_owned())
+    }
+}
+
+impl From<&[u8]> for Picture {
+    fn from(item_id: &[u8]) -> Self {
+        Self(item_id.to_owned())
+    }
+}
+
 impl TryFrom<&PlaylistItemAttributesMessage> for PlaylistItemAttributes {
     type Error = librespot_core::Error;
     fn try_from(attributes: &PlaylistItemAttributesMessage) -> Result<Self, Self::Error> {
@@ -138,7 +160,7 @@ impl TryFrom<&PlaylistItemAttributesMessage> for PlaylistItemAttributes {
             seen_at: Date::from_timestamp_ms(attributes.get_seen_at())?,
             is_public: attributes.get_public(),
             format_attributes: attributes.get_format_attributes().into(),
-            item_id: attributes.get_item_id().to_owned(),
+            item_id: attributes.get_item_id().into(),
         })
     }
 }

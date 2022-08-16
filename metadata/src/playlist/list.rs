@@ -29,10 +29,15 @@ pub struct Geoblocks(Vec<Geoblock>);
 
 impl_deref_wrapped!(Geoblocks, Vec<Geoblock>);
 
+#[derive(Debug, Clone, Default)]
+pub struct RevisionId(Vec<u8>);
+
+impl_deref_wrapped!(RevisionId, Vec<u8>);
+
 #[derive(Debug, Clone)]
 pub struct Playlist {
     pub id: NamedSpotifyId,
-    pub revision: Vec<u8>,
+    pub revision: RevisionId,
     pub length: i32,
     pub attributes: PlaylistAttributes,
     pub contents: PlaylistItemList,
@@ -55,7 +60,7 @@ impl_deref_wrapped!(Playlists, Vec<SpotifyId>);
 
 #[derive(Debug, Clone)]
 pub struct SelectedListContent {
-    pub revision: Vec<u8>,
+    pub revision: RevisionId,
     pub length: i32,
     pub attributes: PlaylistAttributes,
     pub contents: PlaylistItemList,
@@ -130,7 +135,7 @@ impl TryFrom<&<Playlist as Metadata>::Message> for SelectedListContent {
     type Error = librespot_core::Error;
     fn try_from(playlist: &<Playlist as Metadata>::Message) -> Result<Self, Self::Error> {
         Ok(Self {
-            revision: playlist.get_revision().to_owned(),
+            revision: playlist.get_revision().into(),
             length: playlist.get_length(),
             attributes: playlist.get_attributes().try_into()?,
             contents: playlist.get_contents().try_into()?,
@@ -153,5 +158,10 @@ impl TryFrom<&<Playlist as Metadata>::Message> for SelectedListContent {
     }
 }
 
+impl From<&[u8]> for RevisionId {
+    fn from(revision: &[u8]) -> Self {
+        Self(revision.to_owned())
+    }
+}
 impl_from_repeated_copy!(Geoblock, Geoblocks);
 impl_try_from_repeated!(Vec<u8>, Playlists);
