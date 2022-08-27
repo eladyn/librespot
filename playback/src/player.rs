@@ -778,12 +778,17 @@ struct PlayerTrackLoader {
 
 impl PlayerTrackLoader {
     async fn find_available_alternative(&self, audio: AudioItem) -> Option<AudioItem> {
-        if let Err(e) = audio.availability {
+        let alternatives = match &audio {
+            AudioItem::Track(t) if !t.alternatives.is_empty() => Some(&t.alternatives),
+            _ => None,
+        };
+
+        if let Err(e) = audio.availability(&self.session) {
             error!("Track is unavailable: {}", e);
             None
-        } else if !audio.files.is_empty() {
+        } else if !audio.files().is_empty() {
             Some(audio)
-        } else if let Some(alternatives) = &audio.alternatives {
+        } else if let Some(alternatives) = alternatives {
             let alternatives: FuturesUnordered<_> = alternatives
                 .iter()
                 .map(|alt_id| AudioItem::get_file(&self.session, *alt_id))
@@ -791,7 +796,7 @@ impl PlayerTrackLoader {
 
             alternatives
                 .filter_map(|x| future::ready(x.ok()))
-                .filter(|x| future::ready(x.availability.is_ok()))
+                .filter(|x| future::ready(x.availability(&self.session).is_ok()))
                 .next()
                 .await
         } else {
@@ -841,10 +846,11 @@ impl PlayerTrackLoader {
 
         info!(
             "Loading <{}> with Spotify URI <{}>",
-            audio.name, audio.spotify_uri
+            audio.name(),
+            audio.spotify_uri().as_deref().unwrap_or("unavailable")
         );
 
-        let is_explicit = audio.is_explicit;
+        let is_explicit = audio.is_explicit();
 
         if is_explicit {
             if let Some(value) = self.session.get_user_attribute("filter-explicit-content") {
@@ -855,16 +861,16 @@ impl PlayerTrackLoader {
             }
         }
 
-        if audio.duration < 0 {
+        if audio.duration() < 0 {
             error!(
                 "Track duration for <{}> cannot be {}",
                 spotify_id.to_uri().unwrap_or_default(),
-                audio.duration
+                audio.duration()
             );
             return None;
         }
 
-        let duration_ms = audio.duration as u32;
+        let duration_ms = audio.duration() as u32;
 
         // (Most) podcasts seem to support only 96 kbps Ogg Vorbis, so fall back to it
         let formats = match self.config.bitrate {
@@ -900,13 +906,16 @@ impl PlayerTrackLoader {
         let (format, file_id) =
             match formats
                 .iter()
-                .find_map(|format| match audio.files.get(format) {
+                .find_map(|format| match audio.files().get(format) {
                     Some(&file_id) => Some((*format, file_id)),
                     _ => None,
                 }) {
                 Some(t) => t,
                 None => {
-                    warn!("<{}> is not available in any supported format", audio.name);
+                    warn!(
+                        "<{}> is not available in any supported format",
+                        audio.name()
+                    );
                     return None;
                 }
             };
@@ -1038,7 +1047,7 @@ impl PlayerTrackLoader {
             // Ensure streaming mode now that we are ready to play from the requested position.
             stream_loader_controller.set_stream_mode();
 
-            info!("<{}> ({} ms) loaded", audio.name, audio.duration);
+            info!("<{}> ({} ms) loaded", audio.name(), audio.duration());
 
             return Some(PlayerLoadedTrackData {
                 decoder,

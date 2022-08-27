@@ -5,10 +5,7 @@ use std::{
 };
 
 use crate::{
-    audio::{
-        file::AudioFiles,
-        item::{AudioItem, AudioItemResult, InnerAudioItem},
-    },
+    audio::file::AudioFiles,
     availability::Availabilities,
     content_rating::ContentRatings,
     image::Images,
@@ -56,29 +53,6 @@ pub struct Episode {
 pub struct Episodes(pub Vec<SpotifyId>);
 
 impl_deref_wrapped!(Episodes, Vec<SpotifyId>);
-
-#[async_trait]
-impl InnerAudioItem for Episode {
-    async fn get_audio_item(session: &Session, id: SpotifyId) -> AudioItemResult {
-        let episode = Self::get(session, &id).await?;
-        let availability = Self::available_for_user(
-            &session.user_data(),
-            &episode.availability,
-            &episode.restrictions,
-        );
-
-        Ok(AudioItem {
-            id,
-            spotify_uri: id.to_uri()?,
-            files: episode.audio,
-            name: episode.name,
-            duration: episode.duration,
-            availability,
-            alternatives: None,
-            is_explicit: episode.is_explicit,
-        })
-    }
-}
 
 #[async_trait]
 impl Metadata for Episode {
